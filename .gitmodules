@@ -14,3 +14,9 @@
 	path = lib/risc0
 	url = https://github.com/risc0/risc0
 	rev = "4652f9c"
+[submodule "lib/aave-v3-periphery"]
+	path = lib/aave-v3-periphery
+	url = https://github.com/aave/aave-v3-periphery
+[submodule "lib/aave-v3-core"]
+	path = lib/aave-v3-core
+	url = https://github.com/aave/aave-v3-core

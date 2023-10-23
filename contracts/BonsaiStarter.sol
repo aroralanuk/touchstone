@@ -19,6 +19,13 @@ pragma solidity ^0.8.17;
 import {IBonsaiRelay} from "bonsai/IBonsaiRelay.sol";
 import {BonsaiCallbackReceiver} from "bonsai/BonsaiCallbackReceiver.sol";
 
+import {IPool} from "@aave/core-v3/contracts/interfaces/IPool.sol";
+import {IPoolAddressesProvider} from "@aave/core-v3/contracts/interfaces/IPoolAddressesProvider.sol";
+import {IUiPoolDataProviderV3} from "@aave/periphery-v3/contracts/misc/interfaces/IUiPoolDataProviderV3.sol";
+import {IPriceOracle} from "@aave/core-v3/contracts/interfaces/IPriceOracle.sol";
+
+import {Position} from "./libraries/Position.sol";
+
 /// @title A starter application using Bonsai through the on-chain relay.
 /// @dev This contract demonstrates one pattern for offloading the computation of an expensive
 //       or difficult to implement function to a RISC Zero guest running on Bonsai.
@@ -34,6 +41,11 @@ contract BonsaiStarter is BonsaiCallbackReceiver {
     /// @notice Gas limit set on the callback from Bonsai.
     /// @dev Should be set to the maximum amount of gas your callback might reasonably consume.
     uint64 private constant BONSAI_CALLBACK_GAS_LIMIT = 100000;
+
+    IPoolAddressesProvider public provider;
+    IPool public pool;
+    IUiPoolDataProviderV3 public poolPeriphery;
+    IPriceOracle public priceOracle;
 
     /// @notice Initialize the contract, binding it to a specified Bonsai relay and RISC Zero guest image.
     constructor(IBonsaiRelay bonsaiRelay, bytes32 _fibImageId) BonsaiCallbackReceiver(bonsaiRelay) {
@@ -65,5 +77,39 @@ contract BonsaiStarter is BonsaiCallbackReceiver {
         bonsaiRelay.requestCallback(
             fibImageId, abi.encode(n), address(this), this.storeResult.selector, BONSAI_CALLBACK_GAS_LIMIT
         );
+    }
+
+    function sendPositionData(address borrower, bool _runModel) external {
+        (,,,,, uint256 healthFactor) = pool.getUserAccountData(borrower);
+
+        (IUiPoolDataProviderV3.UserReserveData[] memory userData,) =
+            poolPeriphery.getUserReservesData(provider, borrower);
+
+        uint256 assetPrice;
+        uint256 priceAtBlock;
+
+        for (uint256 i = 0; i < userData.length; i++) {
+            if (userData[i].usageAsCollateralEnabledOnUser) {
+                assetPrice = priceOracle.getAssetPrice(userData[i].underlyingAsset);
+                priceAtBlock = assetPrice * userData[i].scaledATokenBalance;
+            }
+        }
+
+        if (_runModel) {
+            // collect data
+        } else {
+            Position.PositionSnapshot memory snapshot = Position.PositionSnapshot({
+                blockNumber: block.number,
+                priceAtBlock: priceAtBlock,
+                healthFactor: healthFactor
+            });
+            bonsaiRelay.requestCallback(
+                fibImageId,
+                Position.encodeSnapshot(borrower, snapshot),
+                address(this),
+                this.storeResult.selector,
+                BONSAI_CALLBACK_GAS_LIMIT
+            );
+        }
     }
 }
