@@ -21,14 +21,22 @@ import {IBonsaiRelay} from "bonsai/IBonsaiRelay.sol";
 import {BonsaiStarter} from "contracts/BonsaiStarter.sol";
 
 contract BonsaiStarterTest is BonsaiTest {
-    function setUp() public withRelay {}
+    string MAINNET_RPC_URL = "https://eth.llamarpc.com";
+    uint256 mainnetFork = vm.createFork(MAINNET_RPC_URL);
+
+    function setUp() public withRelay {
+        // vm.selectFork(mainnetFork);
+    }
 
     function testMockCall() public {
-        // Deploy a new starter instance
         BonsaiStarter starter = new BonsaiStarter(
             IBonsaiRelay(bonsaiRelay),
-            queryImageId('FIBONACCI'));
-
+            queryImageId('FIBONACCI'),
+            0x2f39d218133AFaB8F2B819B1066c7E434Ad94E9e,
+            0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2,
+            0x54586bE62E3c3580375aE3723C145253060Ca0C2,
+            0x91c0eA31b49B69Ea18607702c5d9aC360bf3dE7d
+        );
         // Anticipate a callback request to the relay
         vm.expectCall(address(bonsaiRelay), abi.encodeWithSelector(IBonsaiRelay.requestCallback.selector));
         // Request the callback
@@ -43,4 +51,8 @@ contract BonsaiStarterTest is BonsaiTest {
         uint256 result = starter.fibonacci(128);
         assertEq(result, uint256(407305795904080553832073954));
     }
+
+    // function testCalcValueAtRisk() public {
+    //     starter.calcValueAtRisk(0x4196c40De33062ce03070f058922BAA99B28157B, false);
+    // }
 }

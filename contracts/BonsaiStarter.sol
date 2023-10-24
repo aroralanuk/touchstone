@@ -48,8 +48,19 @@ contract BonsaiStarter is BonsaiCallbackReceiver {
     IPriceOracle public priceOracle;
 
     /// @notice Initialize the contract, binding it to a specified Bonsai relay and RISC Zero guest image.
-    constructor(IBonsaiRelay bonsaiRelay, bytes32 _fibImageId) BonsaiCallbackReceiver(bonsaiRelay) {
+    constructor(
+        IBonsaiRelay bonsaiRelay,
+        bytes32 _fibImageId,
+        address _provider,
+        address _pool,
+        address _oracle,
+        address _poolPeriphery
+    ) BonsaiCallbackReceiver(bonsaiRelay) {
         fibImageId = _fibImageId;
+        // provider = IPoolAddressesProvider(_provider);
+        // pool = IPool(_pool);
+        // priceOracle = IPriceOracle(_oracle);
+        // poolPeriphery = IUiPoolDataProviderV3(_poolPeriphery);
     }
 
     event CalculateFibonacciCallback(uint256 indexed n, uint256 result);
@@ -79,7 +90,7 @@ contract BonsaiStarter is BonsaiCallbackReceiver {
         );
     }
 
-    function sendPositionData(address borrower, bool _runModel) external {
+    function calcValueAtRisk(address borrower, bool _runModel) external {
         (,,,,, uint256 healthFactor) = pool.getUserAccountData(borrower);
 
         (IUiPoolDataProviderV3.UserReserveData[] memory userData,) =
